@@ -1010,10 +1010,15 @@ int path_nearest_unknown(struct player *p, struct loc start,
 					if (count_neighbors(&test_grid,
 							p->cave, grid,
 							square_isknownpassable,
-							false) == 0 ||
-							loc_eq(test_grid,
-							start)) {
+							false) == 0) {
 						continue;
+					}
+					/*
+					 * Standing next to it: walk into the
+					 * door itself, which opens it.
+					 */
+					if (loc_eq(test_grid, start)) {
+						test_grid = grid;
 					}
 				}
 

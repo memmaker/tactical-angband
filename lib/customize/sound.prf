@@ -495,6 +495,10 @@ sound:BR_PLASMA:mco_attack_breath
 # Breathe force.
 sound:BR_FORCE:mco_attack_breath
 
+# Tactical Angband events without their own Dubtrain sample (RVIP 6b)
+sound:BR_WIND:mco_attack_breath
+sound:SCRAMBLE:pls_tone_headstock
+
 # Breathe the elements (power dragon scale mail).
 sound:BR_ELEMENTS:mco_attack_breath
 

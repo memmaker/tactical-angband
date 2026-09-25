@@ -9,9 +9,9 @@
 	var TILE = 64, TILE_H = 64;    /* source tile size (set by the game) */
 	var OD_ROW = 0, OD_MAX = 0;    /* rows of double-height tiles */
 	var ROOT = '/tactical-angband';
-	/* lib/user holds the savefile (lib/user/save), scores and pref files */
-	var PERSIST = [ROOT + '/lib/user'];
-	var SAVE_DIR = ROOT + '/lib/user/save/';
+	/* Savefile, pref files, scores, panic saves (4.2 main.c: lib/<dir>) */
+	var PERSIST = [ROOT + '/lib/save', ROOT + '/lib/user', ROOT + '/lib/scores', ROOT + '/lib/panic'];
+	var SAVE_DIR = ROOT + '/lib/save/';
 
 	/* Term order = the 4.2 default subwindow flags (ui-init.c) */
 	var TERMS = [
@@ -427,8 +427,9 @@
 	audio.song.loop = true;
 	fetch('sounds/sound.prf').then(function (r) { return r.text(); }).then(function (t) {
 		t.split('\n').forEach(function (l) {
-			var m = /^(\w+):(.+)$/.exec(l.trim());
-			if (m && m[2].trim()) audio.cfg[m[1]] = m[2].trim().split(/\s+/);
+			/* sound:<MSG name>:<sample> <sample>...; the game sends lower case */
+			var m = /^sound:(\w+):(.+)$/.exec(l.trim());
+			if (m && m[2].trim()) audio.cfg[m[1].toLowerCase()] = m[2].trim().split(/\s+/);
 		});
 	});
 
@@ -794,7 +795,7 @@
 		if (!h.hidden) $('help-body').focus();
 	}
 
-	/* -uPLAYER: lib/user/save/PLAYER (no uid prefix without SETGID) */
+	/* -uPLAYER: lib/save/PLAYER (no uid prefix without SETGID) */
 	var SAVE_NAME = 'PLAYER';
 
 	/* ---------- startup ---------- */
