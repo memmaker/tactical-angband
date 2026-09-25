@@ -20,7 +20,8 @@
 		{ id: 'inv', title: 'Inventory' },
 		{ id: 'mon', title: 'Visible monsters' },
 		{ id: 'itm', title: 'Visible items' },
-		{ id: 'rec', title: 'Recall' }
+		{ id: 'rec', title: 'Recall' },
+		{ id: 'eqp', title: 'Equipment' }
 	];
 
 	var palette = [];
@@ -117,6 +118,7 @@
 					if (s.font && s.font[k] >= FONT_MIN && s.font[k] <= FONT_MAX) d.font[k] = s.font[k];
 				});
 				if (s.audio) d.audio = { sound: s.audio.sound === true, music: s.audio.music === true };
+				if (s.wm) d.wm = s.wm;
 				if (s.titles) Object.keys(s.titles).forEach(function (k) {
 					if (typeof s.titles[k] === 'string' && d.font[k]) d.titles[k] = s.titles[k].slice(0, 60);
 				});
@@ -150,31 +152,6 @@
 		if (l.autoTile) l.tile = d.tile;
 	}
 
-	/* Split fractions -> pixel rectangles [x, y, w, h]; clamps the splits */
-	function computeRects() {
-		var A = areaSize(), W = A.w, H = A.h, h = GUT / 2, s = L.split;
-		var xs = clamp(Math.round(W * s.side), MAIN_MIN_W + h, W - MIN_W - h);
-		var yb = clamp(Math.round(H * s.bottom), Math.max(MAIN_MIN_H, 3 * MIN_H + 2 * GUT) + h, H - MIN_H - h);
-		var y1 = clamp(Math.round(yb * s.inv), MIN_H + h, yb - 2 * MIN_H - GUT - h - GUT);
-		var y2 = clamp(Math.round(yb * s.mon), y1 + MIN_H + GUT, yb - MIN_H - h);
-		var xm = clamp(Math.round(W * s.msg), MIN_W + h, W - MIN_W - h);
-		var sw = W - xs - h;
-		return {
-			main: [0, 0, xs - h, yb - h],
-			inv: [xs + h, 0, sw, y1 - h],
-			mon: [xs + h, y1 + h, sw, y2 - y1 - GUT],
-			itm: [xs + h, y2 + h, sw, yb - h - (y2 + h)],
-			msg: [0, yb + h, xm - h, H - yb - h],
-			rec: [xm + h, yb + h, W - xm - h, H - yb - h],
-			split: {
-				side: [xs - h, 0, GUT, yb - h],
-				bottom: [0, yb - h, W, GUT],
-				inv: [xs + h, y1 - h, sw, GUT],
-				mon: [xs + h, y2 - h, sw, GUT],
-				msg: [xm - h, yb + h, GUT, H - yb - h]
-			}
-		};
-	}
 
 	function place(el, r) {
 		el.style.left = r[0] + 'px';
@@ -183,20 +160,33 @@
 		el.style.height = Math.max(0, r[3]) + 'px';
 	}
 
-	/* Position windows and gutters; scale canvases that don't fit (yet) */
-	function applyDom() {
-		rects = computeRects();
-		TERMS.forEach(function (d, i) {
-			place($('t-' + d.id), rects[d.id]);
-			if (terms[i]) fitCanvas(i);
+	/* Windows are placed by the shared tiling window manager (rvip-wm.js) */
+	var wm = null;
+	function applyDom() { if (wm) wm.apply(); }
+	function makeWM() {
+		var s = defaultLayout().split;
+		wm = RvipWM({
+			area: $('game'), menu: $('btn-layout'),
+			wins: [{ id: 'main', title: 'Map' }, { id: 'msg', title: 'Messages' }, { id: 'inv', title: 'Inventory' }, { id: 'mon', title: 'Visible monsters' }, { id: 'itm', title: 'Visible items' }, { id: 'rec', title: 'Recall' }, { id: 'eqp', title: 'Equipment' }],
+			multi: { d: 'v', r: s.bottom, a: { d: 'h', r: s.side, a: 'main', b: { d: 'v', r: s.inv, a: 'inv', b: { d: 'v', r: (s.mon - s.inv) / (1 - s.inv), a: 'mon', b: 'itm' } } }, b: 'msg' },
+			single: 'main',
+			state: L.wm, noFont: 'main',
+			save: function (st) { L.wm = st; saveLayout(); },
+			layout: function (r) {
+				rects = r;
+				TERMS.forEach(function (d, i) { if (terms[i]) fitCanvas(i); });
+				scheduleSoon();
+			},
+			font: function (id, d) { zoomSub(id, d); },
+			onReset: resetLayout
 		});
-		SPLITS.forEach(function (k) { place($('split-' + k), rects.split[k]); });
+		wm.apply();
 	}
 
 	/* Canvas area of a window (inside its border and title bar) */
 	function inner(i) {
-		var r = rects[TERMS[i].id];
-		return { w: Math.max(1, r[2] - BORDER), h: Math.max(1, r[3] - BORDER - (i ? TITLE_H : 0)) };
+		var r = rects[TERMS[i].id] || [0, 0, 400, 240];     /* hidden: any size */
+		return { w: Math.max(1, r[2] - BORDER), h: Math.max(1, r[3] - BORDER - ($('game').classList.contains('wm-single') ? 0 : TITLE_H)) };
 	}
 
 	/* Cell size, font and cols/rows for a window at the current zoom */
@@ -248,8 +238,7 @@
 
 	function buildTerms() {
 		loadLayout();
-		renderTitles();
-		applyDom();
+		makeWM();
 		TERMS.forEach(function (d, i) {
 			var l = termShape(i);
 			configureTerm(i, l, l.cols, l.rows);
@@ -270,11 +259,10 @@
 	function scheduleLayout() {
 		if (!terms.length) return;
 		dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-		applyDom();
 		pending = TERMS.map(function (d, i) {
 			var l = termShape(i);
 			/* Unchanged terms need no work (unless the pixel ratio changed) */
-			return (sameShape(terms[i], l) && terms[i].dpr === dpr) ? null : l;
+			return (!rects[d.id] || (sameShape(terms[i], l) && terms[i].dpr === dpr)) ? null : l;
 		});
 	}
 
@@ -287,43 +275,6 @@
 		else schedTimer = setTimeout(function () { schedLast = Date.now(); scheduleLayout(); }, 80);
 	}
 
-	/* Dragging a gutter moves that edge; neighbours follow */
-	function startDrag(k, e) {
-		if (e.button !== 0) return;
-		e.preventDefault();
-		var el = $('split-' + k);
-		el.setPointerCapture(e.pointerId);
-		L.autoSplit = false;
-		el.classList.add('drag');
-		function move(ev) {
-			var g = $('game').getBoundingClientRect(), A = areaSize();
-			var x = ev.clientX - g.left, y = ev.clientY - g.top;
-			var top = rects.split.bottom[1] + GUT / 2;          /* height of the top area */
-			if (k === 'side') L.split.side = x / A.w;
-			else if (k === 'msg') L.split.msg = x / A.w;
-			else if (k === 'bottom') L.split.bottom = y / A.h;
-			else L.split[k] = y / top;
-			applyDom();
-			/* Store what the clamps allowed */
-			var r = rects.split;
-			if (k === 'side') L.split.side = (r.side[0] + GUT / 2) / A.w;
-			if (k === 'msg') L.split.msg = (r.msg[0] + GUT / 2) / A.w;
-			if (k === 'bottom') L.split.bottom = (r.bottom[1] + GUT / 2) / A.h;
-			if (k === 'inv' || k === 'mon') L.split[k] = (r[k][1] + GUT / 2) / top;
-			scheduleSoon();
-		}
-		function up() {
-			el.classList.remove('drag');
-			el.removeEventListener('pointermove', move);
-			el.removeEventListener('pointerup', up);
-			el.removeEventListener('pointercancel', up);
-			scheduleLayout();
-			saveLayout();
-		}
-		el.addEventListener('pointermove', move);
-		el.addEventListener('pointerup', up);
-		el.addEventListener('pointercancel', up);
-	}
 
 	/* Zoom: main window tile size, sub window font size */
 	function zoomMain(dir) {
@@ -349,8 +300,7 @@
 	}
 
 	function resetLayout() {
-		L = Object.assign(defaultLayout(), { audio: L.audio });
-		renderTitles();
+		L = Object.assign(defaultLayout(), { audio: L.audio, wm: wm.state() });
 		scheduleLayout();
 		saveLayout();
 	}
@@ -856,7 +806,6 @@
 		$('help-close').onclick = toggleHelp;
 		$('btn-zoom-in').onclick = function () { zoomMain(1); };
 		$('btn-zoom-out').onclick = function () { zoomMain(-1); };
-		$('btn-layout').onclick = resetLayout;
 		$('btn-sound').onclick = function () { toggleAudio('sound'); };
 		$('btn-music').onclick = function () { toggleAudio('music'); };
 		renderAudio();
@@ -866,15 +815,9 @@
 			b.addEventListener('mousedown', function (e) { e.preventDefault(); });
 		});
 
-		SPLITS.forEach(function (k) {
-			$('split-' + k).addEventListener('pointerdown', function (e) { startDrag(k, e); });
-		});
 		TERMS.forEach(function (d, i) {
 			if (!i) return;
 			var w = $('t-' + d.id);
-			w.querySelector('.name').addEventListener('click', function () { editTitle(d.id); });
-			w.querySelector('.zin').addEventListener('click', function () { zoomSub(d.id, 1); });
-			w.querySelector('.zout').addEventListener('click', function () { zoomSub(d.id, -1); });
 		});
 		$('btn-restart').onclick = function () { location.reload(); };
 	});

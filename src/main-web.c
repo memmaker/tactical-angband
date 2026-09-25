@@ -31,7 +31,7 @@
 #include "ui-input.h"
 #include "ui-prefs.h"
 
-#define WEB_TERMS 6
+#define WEB_TERMS 7		/* term 6: equipment (RVIP 5b) */
 #define WEB_TILESET 5		/* Shockbolt Dark, lib/tiles/list.txt */
 
 static term web_term[WEB_TERMS];

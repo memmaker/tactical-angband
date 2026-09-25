@@ -95,23 +95,19 @@
 	<button id="btn-new" title="Delete the saved character in this browser">New character</button>
 	<input type="file" id="import-file" hidden>
 	<span class="sp"></span>
-	<span class="hint">Drag the gaps between windows to resize them · click a window title to rename it</span>
+	<span class="hint">Windows ▾: layout · drag bars to resize, titles to move · Enter: all commands</span>
 </div>
 
 <div id="status">Loading Tactical Angband…</div>
 
 <div id="game" hidden>
 	<div class="win" id="t-main"><div class="body"><canvas></canvas></div></div>
-	<div class="win" id="t-inv"><div class="t"><span class="name" title="Click to rename"></span><span class="zoom"><button class="zout" title="Smaller text">A−</button><button class="zin" title="Bigger text">A+</button></span></div><div class="body"><canvas></canvas></div></div>
-	<div class="win" id="t-mon"><div class="t"><span class="name" title="Click to rename"></span><span class="zoom"><button class="zout" title="Smaller text">A−</button><button class="zin" title="Bigger text">A+</button></span></div><div class="body"><canvas></canvas></div></div>
-	<div class="win" id="t-itm"><div class="t"><span class="name" title="Click to rename"></span><span class="zoom"><button class="zout" title="Smaller text">A−</button><button class="zin" title="Bigger text">A+</button></span></div><div class="body"><canvas></canvas></div></div>
-	<div class="win" id="t-msg"><div class="t"><span class="name" title="Click to rename"></span><span class="zoom"><button class="zout" title="Smaller text">A−</button><button class="zin" title="Bigger text">A+</button></span></div><div class="body"><canvas></canvas></div></div>
-	<div class="win" id="t-rec"><div class="t"><span class="name" title="Click to rename"></span><span class="zoom"><button class="zout" title="Smaller text">A−</button><button class="zin" title="Bigger text">A+</button></span></div><div class="body"><canvas></canvas></div></div>
-	<div class="split v" id="split-side" title="Drag to resize"></div>
-	<div class="split h" id="split-bottom" title="Drag to resize"></div>
-	<div class="split h" id="split-inv" title="Drag to resize"></div>
-	<div class="split h" id="split-mon" title="Drag to resize"></div>
-	<div class="split v" id="split-msg" title="Drag to resize"></div>
+	<div class="win" id="t-inv"><div class="t"><span class="name" title="Click to rename"></span></div><div class="body"><canvas></canvas></div></div>
+	<div class="win" id="t-eqp"><div class="t"><span class="name" title="Click to rename"></span></div><div class="body"><canvas></canvas></div></div>
+	<div class="win" id="t-mon"><div class="t"><span class="name" title="Click to rename"></span></div><div class="body"><canvas></canvas></div></div>
+	<div class="win" id="t-itm"><div class="t"><span class="name" title="Click to rename"></span></div><div class="body"><canvas></canvas></div></div>
+	<div class="win" id="t-msg"><div class="t"><span class="name" title="Click to rename"></span></div><div class="body"><canvas></canvas></div></div>
+	<div class="win" id="t-rec"><div class="t"><span class="name" title="Click to rename"></span></div><div class="body"><canvas></canvas></div></div>
 </div>
 
 <div id="help" hidden>
@@ -129,6 +125,7 @@
 	</div>
 </div>
 
+<script src="rvip-wm.js"></script>
 <script src="tactical.js"></script>
 <script src="tactical-core.js"></script>
 </body>
