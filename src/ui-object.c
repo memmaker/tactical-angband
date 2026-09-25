@@ -43,6 +43,7 @@
 #include "ui-command.h"
 #include "ui-display.h"
 #include "ui-game.h"
+#include "ui-context.h"
 #include "ui-input.h"
 #include "ui-keymap.h"
 #include "ui-menu.h"
@@ -619,6 +620,64 @@ static olist_detail_t olist_mode = 0;
 static int item_mode;
 static cmd_code item_cmd;
 static bool newmenu = false;
+
+/* RVIP 3c: the i / e / | lists (item_browse); how the item was chosen */
+bool item_browse = false;
+int item_browse_act = 0;
+static const char browse_keys[] = "/|-+* 50."
+	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	"\x01\x02\x03\x04\x05\x06\x07\x08\x0b\x0c\x0e\x0f"
+	"\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a";
+
+/**
+ * A key in an i / e / | list: letter = main action, Shift+letter = drop,
+ * Ctrl+letter = examine; keypad + - * act on the cursor, 5 / Space open the
+ * item menu, 0 / . close.  Other keys close the list and run as commands.
+ */
+static bool browse_key(struct menu *menu, struct keypress kp, int oid)
+{
+	struct object_menu_data *choice = menu_priv(menu);
+	keycode_t key = kp.code;
+	bool keypad = (kp.mods & KC_MOD_KEYPAD) ? true : false;
+	int i, act = 0, target = -1;
+
+	if (keypad && (key == '0' || key == '.')) {
+		item_browse_act = -1;
+		return true;
+	}
+	if ((keypad && strchr("+-*5", (int) key)) || key == ' ') {
+		act = key == '+' ? CTX_ACT_MAIN : key == '-' ? CTX_ACT_DROP :
+			key == '*' ? CTX_ACT_EXAMINE : 0;
+		target = oid;
+	} else if (key == '/' || key == '|' || key == '-') {
+		return false;
+	} else {
+		char tag = (char) key;
+
+		if (key >= 'A' && key <= 'Z') {
+			act = CTX_ACT_DROP;
+			tag = (char) (key - 'A' + 'a');
+		} else if (key >= 1 && key <= 26) {
+			act = CTX_ACT_EXAMINE;
+			tag = (char) (key - 1 + 'a');
+		} else {
+			/* Lower case letters and quiver digits */
+			act = CTX_ACT_MAIN;
+		}
+		for (i = 0; act && i < menu->count; i++) {
+			if (choice[i].object && choice[i].key == tag) target = i;
+		}
+	}
+	if (target < 0 || !choice[target].object) {
+		/* Not an item key: close the list and run it as a command */
+		item_browse_act = -1;
+		Term_keypress(key, kp.mods);
+		return true;
+	}
+	selection = choice[target].object;
+	item_browse_act = act;
+	return true;
+}
 static bool allow_all = false;
 
 /**
@@ -960,6 +1019,31 @@ static bool get_item_action(struct menu *menu, const ui_event *event, int oid)
 			selection = choice[oid].object;
 	}
 
+	if (event->type == EVT_KBRD && item_browse
+			&& browse_key(menu, event->key, oid)) {
+		return false;
+	}
+
+	/* Keypad 5 chooses the item under the cursor in every item prompt */
+	if (event->type == EVT_KBRD && key == '5' && !item_browse) {
+		if (event->key.mods & KC_MOD_KEYPAD) {
+			if (choice[oid].object && get_item_allow(choice[oid].object,
+					cmd_lookup_key(item_cmd, mode), item_cmd, is_harmless))
+				selection = choice[oid].object;
+		} else if (menu->inscriptions && menu->inscriptions[5]) {
+			for (oid = 0; oid < menu->count; oid++) {
+				if (choice[oid].key == menu->inscriptions[5]) {
+					if (get_item_allow(choice[oid].object,
+							cmd_lookup_key(item_cmd, mode), item_cmd,
+							is_harmless))
+						selection = choice[oid].object;
+					break;
+				}
+			}
+		}
+		return false;
+	}
+
 	if (event->type == EVT_KBRD) {
 		if (key == '/') {
 			/* Toggle if allowed */
@@ -1155,7 +1239,7 @@ static struct object *item_menu(cmd_code cmd, int prompt_size, int mode)
 		m->selections = "0123456789";
 	else
 		m->selections = all_letters_nohjkl;
-	m->switch_keys = "/|-";
+	m->switch_keys = item_browse ? browse_keys : "/|-5";
 	m->context_hook = use_context_menu_list_switcher;
 	m->flags = (MN_PVT_TAGS | MN_INSCRIP_TAGS | MN_KEYMAP_ESC);
 	m->browse_hook = item_menu_browser;

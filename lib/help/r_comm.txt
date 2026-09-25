@@ -10,10 +10,22 @@ and does not pass it on. '<' and '>' always use the staircase at the
 player's location if it is the appropriate kind; otherwise the player
 walks to the nearest known staircase of that kind and takes it on
 arrival (anything that interrupts the walk cancels taking the stairs).
-The autoexplore_commands option modifies the 'p' command: when that
-option is on, 'p' will move to the nearest unexplored location.
-Exploring never picks locks: it stops in front of a locked door, and
-pressing 'p' again skips that door and explores elsewhere.
+'p' explores (with the autoexplore_commands option on, the default):
+it walks towards the nearest unexplored place, one step per turn, and
+keeps going until a monster comes into view, a new message appears or
+a key is pressed. It avoids known traps and opens doors but never picks
+locks: it stops in front of a locked door, and pressing 'p' again skips
+that door and explores elsewhere.
+
+Enter opens a menu of all commands, grouped, with their keys.
+
+In the inventory ('i'), equipment ('e') and quiver ('|') lists, an
+item's letter runs its main action (eat, quaff, read, use, aim, zap,
+cast, wear, take off, refuel, otherwise inspect), Shift+letter drops it,
+Ctrl+letter inspects it, and Enter, Space or a click opens the menu of
+every action for it. On the keypad: 8/2 move, 4/6 switch lists, 5 opens
+the menu, + main action, - drop, * inspect, 0 or . closes. After an
+action the list opens again unless a monster is in view.
 
   a    Zap a rod (Activate)            A    Activate an object
   b    (walk - south west)             B    (run - south west)

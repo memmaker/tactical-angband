@@ -45,6 +45,7 @@ enum {
 void messages_init(void);
 void messages_free(void);
 uint16_t messages_num(void);
+extern uint32_t messages_added;
 void message_add(const char *str, uint16_t type);
 const char *message_str(uint16_t age);
 uint16_t message_count(uint16_t age);

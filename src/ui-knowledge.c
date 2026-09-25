@@ -3907,31 +3907,36 @@ void do_cmd_messages(void)
 #define GET_ITEM_PARAMS \
  	(USE_EQUIP | USE_INVEN | USE_QUIVER | USE_FLOOR | SHOW_QUIVER | SHOW_EMPTY | IS_HARMLESS)
  
+/* Key that reopens the list after an item action (RVIP 3c), or 0 */
+char inven_reopen_key = 0;
+
 /**
- * Display inventory
+ * The i / e / | lists: a cursor list where a letter runs the item's main
+ * action, Shift+letter drops, Ctrl+letter examines and Enter / Space / a
+ * click opens the menu of all actions (see browse_key() in ui-object.c).
  */
-void do_cmd_inven(void)
+static void inven_browse(int list, char key)
 {
 	struct object *obj = NULL;
 	int ret = 3;
 
-	if (player->upkeep->inven[0] == NULL) {
-		msg("You have nothing in your inventory.");
-		return;
-	}
-
-	/* Start in "inventory" mode */
-	player->upkeep->command_wrk = (USE_INVEN);
-
 	/* Loop this menu until an object context menu says differently */
 	while (ret == 3) {
+		player->upkeep->command_wrk = list;
+
 		/* Save screen */
 		screen_save();
 
-		/* Get an item to use a context command on (Display the inventory) */
+		/* Get an item to use a context command on */
+		item_browse = true;
+		item_browse_act = 0;
 		if (get_item(&obj, "Select Item:",
-				"Error in do_cmd_inven(), please report.",
+				"Error in inven_browse(), please report.",
 				CMD_NULL, NULL, GET_ITEM_PARAMS)) {
+			int act = item_browse_act;
+
+			item_browse = false;
+
 			/* Load screen */
 			screen_load();
 
@@ -3940,16 +3945,33 @@ void do_cmd_inven(void)
 				track_object(player->upkeep, obj);
 
 				if (!player_is_shapechanged(player)) {
-					while ((ret = context_menu_object(obj)) == 2);
+					ret = context_menu_object_act(obj, act);
+					while (ret == 2)
+						ret = context_menu_object(obj);
+					if (ret == 1) inven_reopen_key = key;
 				}
 			}
 		} else {
+			item_browse = false;
+
 			/* Load screen */
 			screen_load();
 
 			ret = -1;
 		}
 	}
+}
+
+/**
+ * Display inventory
+ */
+void do_cmd_inven(void)
+{
+	if (player->upkeep->inven[0] == NULL) {
+		msg("You have nothing in your inventory.");
+		return;
+	}
+	inven_browse(USE_INVEN, 'i');
 }
 
 
@@ -3958,96 +3980,24 @@ void do_cmd_inven(void)
  */
 void do_cmd_equip(void)
 {
-	struct object *obj = NULL;
-	int ret = 3;
-
 	if (!player->upkeep->equip_cnt) {
 		msg("You are not wielding or wearing anything.");
 		return;
 	}
-
-	/* Start in "equipment" mode */
-	player->upkeep->command_wrk = (USE_EQUIP);
-
-	/* Loop this menu until an object context menu says differently */
-	while (ret == 3) {
-		/* Save screen */
-		screen_save();
-
-		/* Get an item to use a context command on (Display the equipment) */
-		if (get_item(&obj, "Select Item:",
-				"Error in do_cmd_equip(), please report.",
-				CMD_NULL, NULL, GET_ITEM_PARAMS)) {
-			/* Load screen */
-			screen_load();
-
-			if (obj && obj->kind) {
-				/* Track the object */
-				track_object(player->upkeep, obj);
-
-				if (!player_is_shapechanged(player)) {
-					while ((ret = context_menu_object(obj)) == 2);
-				}
-
-				/* Stay in "equipment" mode */
-				player->upkeep->command_wrk = (USE_EQUIP);
-			}
-		} else {
-			/* Load screen */
-			screen_load();
-
-			ret = -1;
-		}
-	}
+	inven_browse(USE_EQUIP, 'e');
 }
 
 
 /**
- * Display equipment
+ * Display quiver
  */
 void do_cmd_quiver(void)
 {
-	struct object *obj = NULL;
-	int ret = 3;
-
 	if (player->upkeep->quiver_cnt == 0) {
 		msg("You have nothing in your quiver.");
 		return;
 	}
-
-	/* Start in "quiver" mode */
-	player->upkeep->command_wrk = (USE_QUIVER);
-
-	/* Loop this menu until an object context menu says differently */
-	while (ret == 3) {
-		/* Save screen */
-		screen_save();
-
-		/* Get an item to use a context command on (Display the quiver) */
-		if (get_item(&obj, "Select Item:",
-				"Error in do_cmd_quiver(), please report.",
-				CMD_NULL, NULL, GET_ITEM_PARAMS)) {
-			/* Load screen */
-			screen_load();
-
-			if (obj && obj->kind) {
-				/* Track the object */
-				track_object(player->upkeep, obj);
-
-				if (!player_is_shapechanged(player)) {
-					while  ((ret = context_menu_object(obj)) == 2);
-				}
-
-				/* Stay in "quiver" mode */
-				player->upkeep->command_wrk = (USE_QUIVER);
-			}
-		} else {
-			/* Load screen */
-			screen_load();
-
-			ret = -1;
-		}
-	}
+	inven_browse(USE_QUIVER, '|');
 }
 
 

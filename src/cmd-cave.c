@@ -1529,6 +1529,9 @@ void do_cmd_explore(struct command *cmd)
 	if (player->upkeep->step_count > 0) {
 		player->upkeep->running_firststep = true;
 		player->upkeep->running = player->upkeep->step_count;
+		/* Keep exploring on arrival until disturbed (RVIP step 2) */
+		player->upkeep->path_stairs = 2;
+		player->upkeep->explore_msgs = messages_added;
 		/* Calculate torch radius */
 		player->upkeep->update |= (PU_TORCH);
 		run_step(0);

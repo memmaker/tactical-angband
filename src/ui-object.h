@@ -63,4 +63,7 @@ void textui_cmd_ignore_menu(struct object *obj);
 void textui_cmd_ignore(void);
 void textui_cmd_toggle_ignore(void);
 
+extern bool item_browse;
+extern int item_browse_act;
+
 #endif /* OBJECT_UI_H */

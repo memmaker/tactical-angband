@@ -1915,6 +1915,22 @@ static bool run_test(const struct player *p)
  * Called with a real direction to begin a new run, and with zero
  * to continue a run in progress.
  */
+/**
+ * End of a path: take the stairs for '<' / '>' (what = 1 / -1), or keep
+ * exploring (what = 2) unless a message came up on the way (RVIP 2, 3).
+ */
+static void path_arrived(int what)
+{
+	if (what == 2) {
+		if (messages_added == player->upkeep->explore_msgs)
+			cmdq_push(CMD_EXPLORE);
+	} else if (what > 0 && square_isupstairs(cave, player->grid)) {
+		cmdq_push(CMD_GO_UP);
+	} else if (what < 0 && square_isdownstairs(cave, player->grid)) {
+		cmdq_push(CMD_GO_DOWN);
+	}
+}
+
 void run_step(int dir)
 {
 	/* Trapsafe player will treat the trap as if it isn't there */
@@ -1942,17 +1958,15 @@ void run_step(int dir)
 			}
 		} else if (player->upkeep->step_count <= 0) {
 			/* Pathfinding, and the path is finished */
-			int stairs = player->upkeep->path_stairs;
+			int what = player->upkeep->path_stairs;
 
 			disturb(player);
-
-			/* Walked to the stairs for '<' / '>': take them */
-			if (stairs > 0 && square_isupstairs(cave, player->grid)) {
-				cmdq_push(CMD_GO_UP);
-			} else if (stairs < 0
-					&& square_isdownstairs(cave, player->grid)) {
-				cmdq_push(CMD_GO_DOWN);
-			}
+			path_arrived(what);
+			return;
+		} else if (player->upkeep->path_stairs == 2
+				&& messages_added != player->upkeep->explore_msgs) {
+			/* Exploring stops on any new message */
+			disturb(player);
 			return;
 		} else {
 			int next_step_ind = player->upkeep->step_count - 1;
@@ -2119,8 +2133,14 @@ void run_step(int dir)
 		}
 		cmd_set_arg_direction(cmdq_peek(), "direction", 0);
 	} else if (player->upkeep->steps) {
+		int what = player->upkeep->path_stairs;
+
 		mem_free(player->upkeep->steps);
 		player->upkeep->steps = NULL;
+		player->upkeep->path_stairs = 0;
+
+		/* Last step of the path taken */
+		path_arrived(what);
 	}
 }
 

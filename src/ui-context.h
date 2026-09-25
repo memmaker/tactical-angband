@@ -26,6 +26,8 @@ int context_menu_player(int mx, int my);
 int context_menu_cave(struct chunk *c, int y, int x, int adjacent, int mx,
 					  int my);
 int context_menu_object(struct object *obj);
+enum { CTX_ACT_MAIN = 1, CTX_ACT_DROP, CTX_ACT_EXAMINE };
+int context_menu_object_act(struct object *obj, int act);
 int context_menu_command(int mx, int my);
 void textui_process_click(ui_event e);
 struct cmd_info *textui_action_menu_choose(void);

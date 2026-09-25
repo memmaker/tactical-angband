@@ -330,6 +330,7 @@ int context_menu_player(int mx, int my)
 
 	screen_load();
 
+chosen:
 	cmdkey = cmd_lookup_key(selected, mode);
 
 	/* Check the command to see if it is allowed. */
@@ -553,6 +554,7 @@ int context_menu_cave(struct chunk *c, int y, int x, int adjacent, int mx,
 
 	screen_load();
 
+chosen:
 	cmdkey = cmd_lookup_key(selected, mode);
 
 	/* Check the command to see if it is allowed. */
@@ -651,7 +653,51 @@ int context_menu_cave(struct chunk *c, int y, int x, int adjacent, int mx,
 /**
  * Pick the context menu options appropiate for the item
  */
+/**
+ * The action an item's letter runs in the inventory list (RVIP 3c): eat,
+ * quaff, read, use/aim/zap, cast, wear, take off, refuel, else inspect.
+ */
+static int object_main_action(struct object *obj)
+{
+	bool equipped = object_is_equipped(player->body, obj);
+
+	if (obj_can_browse(obj)) {
+		if (obj_can_cast_from(obj) && player_can_cast(player, false))
+			return CMD_CAST;
+		if (obj_can_study(obj) && player_can_study(player, false))
+			return CMD_STUDY;
+		return player_can_read(player, false) ? CMD_BROWSE_SPELL :
+			MENU_VALUE_INSPECT;
+	}
+	if (!equipped && obj_is_useable(obj)) {
+		if (tval_is_wand(obj))
+			return obj_has_charges(obj) ? CMD_USE_WAND : MENU_VALUE_INSPECT;
+		if (tval_is_rod(obj))
+			return obj_can_zap(obj) ? CMD_USE_ROD : MENU_VALUE_INSPECT;
+		if (tval_is_staff(obj))
+			return obj_has_charges(obj) ? CMD_USE_STAFF : MENU_VALUE_INSPECT;
+		if (tval_is_scroll(obj))
+			return player_can_read(player, false) ? CMD_READ_SCROLL :
+				MENU_VALUE_INSPECT;
+		if (tval_is_potion(obj)) return CMD_QUAFF;
+		if (tval_is_edible(obj)) return CMD_EAT;
+	}
+	if (obj_can_refill(obj)) return CMD_REFILL;
+	if (equipped && obj_can_takeoff(obj)) return CMD_TAKEOFF;
+	if (!equipped && obj_can_wear(obj)) return CMD_WIELD;
+	return MENU_VALUE_INSPECT;
+}
+
 int context_menu_object(struct object *obj)
+{
+	return context_menu_object_act(obj, 0);
+}
+
+/**
+ * Object context menu.  act == 0 shows the menu; CTX_ACT_MAIN / DROP /
+ * EXAMINE run that action directly, as if chosen from the menu.
+ */
+int context_menu_object_act(struct object *obj, int act)
 {
 	struct menu *m;
 	region r;
@@ -770,6 +816,19 @@ int context_menu_object(struct object *obj)
 	ADD_LABEL( (object_is_ignored(obj) ? "Unignore" : "Ignore"), CMD_IGNORE,
 			   MN_ROW_VALID);
 
+	if (act) {
+		selected = (act == CTX_ACT_MAIN) ? object_main_action(obj) :
+			(act == CTX_ACT_DROP && object_is_carried(player, obj)) ?
+			CMD_DROP : MENU_VALUE_INSPECT;
+		if (selected == CMD_DROP && square_isshop(cave, player->grid)
+				&& square(cave, player->grid)->feat != FEAT_HOME
+				&& !store_will_buy_tester(obj))
+			selected = MENU_VALUE_INSPECT;
+		menu_dynamic_free(m);
+		string_free(labels);
+		goto chosen;
+	}
+
 	/* work out display region */
 	r.width = (int)menu_dynamic_longest_entry(m) + 3 + 2; /* +3 for tag,
 														   * 2 for pad */
@@ -802,6 +861,7 @@ int context_menu_object(struct object *obj)
 
 	screen_load();
 
+chosen:
 	cmdkey = cmd_lookup_key(selected, mode);
 
 	switch (selected) {
@@ -818,7 +878,8 @@ int context_menu_object(struct object *obj)
 
 			textui_textblock_show(tb, area, format("%s", header));
 			textblock_free(tb);
-			return 2;
+			/* Examined straight from the list: back to the list */
+			return act ? 3 : 2;
 
 		case MENU_VALUE_DROP_ALL:
 			/* Drop entire stack without confirmation. */
@@ -1170,17 +1231,37 @@ static bool cmd_menu(struct command_list *list, void *selection_p)
 	 */
 	bool result = false;
 
+	int i, mode = OPT(player, rogue_like_commands) ?
+		KEYMAP_MODE_ROGUE : KEYMAP_MODE_ORIG;
+
+	/* Size the box to its content (RVIP 3b): longest entry x entries */
+	area.width = 1;
+	for (i = 0; i < (int) list->len; i++) {
+		struct keypress kp = { EVT_KBRD, list->list[i].key[mode], 0 };
+		char buf[16];
+		int w = (int) strlen(list->list[i].desc);
+
+		if (kp.code) {
+			keypress_to_readable(buf, sizeof buf, kp);
+			w += 3 + (int) strlen(buf);
+		}
+		area.width = MAX(area.width, w);
+	}
+
 	/* Set up the menu */
 	menu_init(&menu, MN_SKIN_SCROLL, &commands_menu);
 	menu_setpriv(&menu, list->len, list->list);
 	area.col += 2 * list->menu_level;
 	area.row -= list->menu_level;
 	assert(area.row > 1);
+	area.col = MAX(2, MIN(area.col, Term->wid - area.width - 2));
+	area.page_rows = MIN((int) list->len, Term->hgt - area.row - 2);
 	menu_layout(&menu, &area);
 
 	/* Set up the screen */
 	screen_save();
-	window_make(area.col - 2, area.row - 1, area.col + 39, area.row + 13);
+	window_make(area.col - 2, area.row - 1, area.col + area.width + 1,
+		area.row + area.page_rows);
 
 	while (1) {
 		/* Select an entry */
@@ -1283,12 +1364,19 @@ struct cmd_info *textui_action_menu_choose(void)
 		len++;
 	};
 
+	/* Size the box to its content (RVIP 3b) */
+	area.width = 1;
+	for (int i = 0; i < len; i++)
+		area.width = MAX(area.width, (int) strlen(cmds_all[i].name));
+	area.page_rows = len;
+
 	menu_setpriv(command_menu, len, &chosen_command);
 	menu_layout(command_menu, &area);
 
 	/* Set up the screen */
 	screen_save();
-	window_make(19, 4, 58, 11);
+	window_make(area.col - 2, area.row - 1, area.col + area.width + 1,
+		area.row + area.page_rows);
 
 	menu_select(command_menu, 0, true);
 
