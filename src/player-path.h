@@ -33,6 +33,7 @@ void release_pfdistances(struct pfdistances *a);
 int path_nearest_known(struct player *p, struct loc start,
 		bool (*pred)(struct chunk*, struct loc),
 		struct loc *dest_grid, int16_t **step_dirs);
+bool path_have_skipped_doors(void);
 int path_nearest_unknown(struct player *p, struct loc start,
 		struct loc *dest_grid, int16_t **step_dirs);
 int find_path(struct player *p, struct loc start, struct loc dest,

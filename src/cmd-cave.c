@@ -59,11 +59,9 @@ void do_cmd_go_up(struct command *cmd)
 
 	/* Verify stairs */
 	if (!square_isupstairs(cave, player->grid)) {
-		if (OPT(player, autoexplore_commands)) {
-			do_cmd_navigate_up(cmd);
-		} else {
-			msg("I see no up staircase here.");
-		}
+		/* Walk to the nearest known up staircase, then take it */
+		do_cmd_navigate_up(cmd);
+		if (player->upkeep->running) player->upkeep->path_stairs = 1;
 		return;
 	}
 
@@ -104,11 +102,9 @@ void do_cmd_go_down(struct command *cmd)
 
 	/* Verify stairs */
 	if (!square_isdownstairs(cave, player->grid)) {
-		if (OPT(player, autoexplore_commands)) {
-			do_cmd_navigate_down(cmd);
-		} else {
-			msg("I see no down staircase here.");
-		}
+		/* Walk to the nearest known down staircase, then take it */
+		do_cmd_navigate_down(cmd);
+		if (player->upkeep->running) player->upkeep->path_stairs = -1;
 		return;
 	}
 
@@ -1539,7 +1535,11 @@ void do_cmd_explore(struct command *cmd)
 		return;
 	}
 
-	msg("No apparent path for exploration.");
+	if (path_have_skipped_doors()) {
+		msg("Only locked doors are left to explore.");
+	} else {
+		msg("No apparent path for exploration.");
+	}
 }
 
 

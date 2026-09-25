@@ -492,6 +492,7 @@ struct player_upkeep {
 	int step_count;			/* Pathfinding: number of steps left */
 	int16_t *steps;			/* Pathfinding: steps in reverse order */
 	struct loc path_dest;		/* Pathfinding: destination grid */
+	int path_stairs;		/* Pathfinding: take stairs on arrival (1 up, -1 down) */
 };
 
 /**

@@ -71,3 +71,8 @@ src/stats/db.dep
 src/tests/ran-already
 src/version.h
 build*/
+# RVIP port
+src/tactical-angband
+src/tactical-angband-*
+web/dist/
+web/stage/

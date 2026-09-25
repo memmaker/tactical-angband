@@ -33,6 +33,41 @@
 #include "trap.h"
 #include "z-queue.h"
 
+/*
+ * Locked doors that exploring stopped at on the current level; pathing
+ * treats them as walls so the next explore goes elsewhere.
+ */
+static struct loc skipped_doors[64];
+static int n_skipped_doors;
+static int32_t skipped_doors_turn = -1;
+
+static bool door_skipped(struct loc grid)
+{
+	int i;
+
+	if (skipped_doors_turn != cave->turn) return false;
+	for (i = 0; i < n_skipped_doors; i++) {
+		if (loc_eq(skipped_doors[i], grid)) return true;
+	}
+	return false;
+}
+
+static void skip_door(struct loc grid)
+{
+	if (skipped_doors_turn != cave->turn) {
+		skipped_doors_turn = cave->turn;
+		n_skipped_doors = 0;
+	}
+	if (n_skipped_doors < (int) N_ELEMENTS(skipped_doors)) {
+		skipped_doors[n_skipped_doors++] = grid;
+	}
+}
+
+bool path_have_skipped_doors(void)
+{
+	return skipped_doors_turn == cave->turn && n_skipped_doors > 0;
+}
+
 /**
  * ------------------------------------------------------------------------
  * Pathfinding code
@@ -410,7 +445,9 @@ struct pfdistances *prepare_pfdistances(struct player *p, struct loc start,
 			} else {
 				int penalty, penalized_distance;
 
-				if (square_iscloseddoor(p->cave, next)) {
+				if (door_skipped(next)) {
+					continue;
+				} else if (square_iscloseddoor(p->cave, next)) {
 					penalty = (square_islockeddoor(p->cave,
 						next)) ? locked_penalty :
 						unlocked_penalty;
@@ -963,6 +1000,7 @@ int path_nearest_unknown(struct player *p, struct loc start,
 					if ((!square_iscloseddoor(p->cave, grid)
 							&& !square_isrubble(
 							p->cave, grid))
+							|| door_skipped(grid)
 							|| count_neighbors(NULL,
 							p->cave, grid,
 							square_isknown,
@@ -1218,7 +1256,9 @@ int find_path(struct player *p, struct loc start, struct loc dest,
 				 * Penalize the distance for some known but
 				 * impassable terrain.
 				 */
-				if (square_iscloseddoor(p->cave, this_grid)) {
+				if (door_skipped(this_grid)) {
+					continue;
+				} else if (square_iscloseddoor(p->cave, this_grid)) {
 					penalty = (square_islockeddoor(p->cave,
 						this_grid)) ? locked_penalty :
 						unlocked_penalty;
@@ -1902,7 +1942,17 @@ void run_step(int dir)
 			}
 		} else if (player->upkeep->step_count <= 0) {
 			/* Pathfinding, and the path is finished */
+			int stairs = player->upkeep->path_stairs;
+
 			disturb(player);
+
+			/* Walked to the stairs for '<' / '>': take them */
+			if (stairs > 0 && square_isupstairs(cave, player->grid)) {
+				cmdq_push(CMD_GO_UP);
+			} else if (stairs < 0
+					&& square_isdownstairs(cave, player->grid)) {
+				cmdq_push(CMD_GO_DOWN);
+			}
 			return;
 		} else {
 			int next_step_ind = player->upkeep->step_count - 1;
@@ -1921,7 +1971,14 @@ void run_step(int dir)
 			 * first stop running before pushing the commands to
 			 * deal with the terrain and restart pathfinding.
 			 */
-			if (square_iscloseddoor(player->cave, grid)) {
+			if (square_iscloseddoor(player->cave, grid)
+					&& square_islockeddoor(cave, grid)) {
+				/* Never pick locks: stop, skip it next time */
+				skip_door(grid);
+				disturb(player);
+				msg("You stop at a locked door.");
+				return;
+			} else if (square_iscloseddoor(player->cave, grid)) {
 				if (count_neighbors(NULL, cave, grid,
 						square_isknown, true) == 9) {
 					struct loc dest =
