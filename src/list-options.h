@@ -42,11 +42,11 @@ INTERFACE, false)
 OP(animate_flicker,       "Color: Shimmer multi-colored things",
 INTERFACE, false)
 OP(center_player,         "Center map continuously",
-INTERFACE, false)
+INTERFACE, WEB_ON)
 OP(purple_uniques,        "Color: Show unique monsters in purple",
 INTERFACE, false)
 OP(auto_more,             "Automatically clear '-more-' prompts",
-INTERFACE, false)
+INTERFACE, WEB_ON)
 OP(hp_changes_color,      "Color: Player color indicates % hit points",
 INTERFACE, true)
 OP(mouse_movement,        "Allow mouse clicks to move the player",

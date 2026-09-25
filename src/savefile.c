@@ -432,6 +432,14 @@ bool savefile_save(const char *path)
 
 		safe_setuid_drop();
 
+#ifdef USE_WEB
+		/* Every save goes to IndexedDB right away (main-web.c) */
+		{
+			extern void web_sync_files(void);
+			web_sync_files();
+		}
+#endif
+
 		return err ? false : true;
 	}
 

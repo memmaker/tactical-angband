@@ -25,6 +25,13 @@
  */
 int *option_page[OPT_PAGE_MAX];
 
+/* The browser build turns some conveniences on by default (rogue2wasm.md) */
+#ifdef USE_WEB
+#define WEB_ON true
+#else
+#define WEB_ON false
+#endif
+
 static struct option_entry {
 	const char *name;
 	const char *description;

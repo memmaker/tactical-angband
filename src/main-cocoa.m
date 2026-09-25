@@ -1638,6 +1638,8 @@ static void draw_image_tile(
     CGImageRef subimage =
 	CGImageCreateWithImageInRect(image, flippedSourceRect);
     [nsContext setCompositingOperation:op];
+    /* Scale tiles nearest-neighbour: never smooth pixel art (RVIP 4) */
+    CGContextSetInterpolationQuality(cgContext, kCGInterpolationNone);
     CGContextDrawImage(cgContext, NSRectToCGRect(dstRect), subimage);
     CGImageRelease(subimage);
 }
@@ -5504,8 +5506,9 @@ static void load_prefs(void)
         [NSNumber numberWithFloat:FallbackFontSizeMain], @"FontSize-0",
         [NSNumber numberWithInt:60], AngbandFrameRateDefaultsKey,
         [NSNumber numberWithBool:YES], AngbandSoundDefaultsKey,
-        [NSNumber numberWithInt:GRAPHICS_NONE], AngbandGraphicsDefaultsKey,
-        [NSNumber numberWithInt:0], AngbandTileFracDefaultsKey,
+        /* Shockbolt Dark at half size (32 px tiles) unless changed */
+        [NSNumber numberWithInt:5], AngbandGraphicsDefaultsKey,
+        [NSNumber numberWithInt:500], AngbandTileFracDefaultsKey,
         [NSNumber numberWithInt:1], AngbandTileWidthMultDefaultsKey,
         [NSNumber numberWithInt:1], AngbandTileHeightMultDefaultsKey,
         defaultTerms, AngbandTerminalsDefaultsKey,

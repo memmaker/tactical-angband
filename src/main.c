@@ -63,6 +63,10 @@
  */
 static const struct module modules[] =
 {
+#ifdef USE_WEB
+	{ "web", help_web, init_web },
+#endif /* USE_WEB */
+
 #ifdef USE_X11
 	{ "x11", help_x11, init_x11 },
 #endif /* USE_X11 */
@@ -479,7 +483,7 @@ int main(int argc, char *argv[])
 	/* If we were told which mode to use, then use it */
 	if (mstr)
 		ANGBAND_SYS = mstr;
-#if !defined(WINDOWS) && !defined(DJGPP)
+#if !defined(WINDOWS) && !defined(DJGPP) && !defined(USE_WEB)
 	if (setlocale(LC_CTYPE, "")) {
 		/* Require UTF-8 */
 		if (!streq(nl_langinfo(CODESET), "UTF-8"))
