@@ -108,8 +108,8 @@ EM_JS(void, js_apply_layout, (int t, int cols, int rows), {
 });
 
 /* Next queued input: -1 none, 0x100000 mouse (see js_mouse_*), else key */
-EM_JS(int, js_next_event, (void), {
-	return Module.ta.nextEvent();
+EM_JS(int, js_next_event, (int at_cmd), {
+	return Module.ta.nextEvent(at_cmd);
 });
 
 EM_JS(int, js_event_mods, (void), { return Module.ta.mods; });
@@ -224,7 +224,7 @@ static int web_pump(void)
 
 	Term_activate(&web_term[0]);
 
-	while ((k = js_next_event()) >= 0) {
+	while ((k = js_next_event(inkey_flag && character_generated)) >= 0) {
 		if (k == 0x100000) {
 			Term_mousepress(js_mouse_x(), js_mouse_y(),
 				(char) js_mouse_b());
@@ -313,7 +313,7 @@ static errr Term_xtra_web(int n, int v)
 		case TERM_XTRA_BORED: return web_check_events(0);
 		case TERM_XTRA_EVENT: return web_check_events(v);
 		case TERM_XTRA_FLUSH:
-			while (js_next_event() >= 0) ;
+			while (js_next_event(0) >= 0) ;
 			return 0;
 		case TERM_XTRA_CLEAR: js_clear(web_idx()); return 0;
 		case TERM_XTRA_DELAY:
