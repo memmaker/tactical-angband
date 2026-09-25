@@ -1,7 +1,7 @@
 # Tactical Angband — RVIP handover
 
 Tactical Angband (tomm's Angband 4.2 variant: 50 short levels, one blow ×
-might, few teleports) imported per `~/Games/RVIP.md` (case A) and published
+might, few teleports) imported per `~/Games/rvip-tools/RVIP.md` (case A) and published
 on the web per `~/Games/rogue2wasm.md`.
 
 - Play (Mac): Desktop shortcut `~/Desktop/Games/Roguelikes/Tactical Angband`
