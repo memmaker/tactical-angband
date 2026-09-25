@@ -46,7 +46,7 @@ INTERFACE, WEB_ON)
 OP(purple_uniques,        "Color: Show unique monsters in purple",
 INTERFACE, false)
 OP(auto_more,             "Automatically clear '-more-' prompts",
-INTERFACE, WEB_ON)
+INTERFACE, true)
 OP(hp_changes_color,      "Color: Player color indicates % hit points",
 INTERFACE, true)
 OP(mouse_movement,        "Allow mouse clicks to move the player",
