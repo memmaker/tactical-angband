@@ -81,3 +81,9 @@ on the web per `~/Games/rogue2wasm.md`.
   stairs, options menu incl. subwindow setup, Ctrl-S, reload restores the
   character and the sound setting, sound files fetched, resize, Ctrl-X →
   high scores.
+- Prompt line (RVIP step 5 / W4, 2026-09-26): the live message row is shown in a
+  box over the map by `RvipWM.prompt` (rvip-wm.js). A key hides it only while
+  the game waits for a command, so a question stays up until answered.
+  Here: `js_next_event(inkey_flag && character_generated)` in `src/main-web.c`;
+  the page tracks term 0 row 0 (`row0` in `text`/`wipe`/`clear`) and sends it on
+  `fresh(0)`.
