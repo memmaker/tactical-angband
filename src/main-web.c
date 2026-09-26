@@ -43,6 +43,32 @@ static int web_want_save = 0;
 static double web_last_yield = 0;
 
 
+
+/* Run report (roguelikes-index/server/CONTRACT.md): fire-and-forget GET,
+   never throws, offline just fails silently. Negative ints are omitted. */
+EM_JS(void, js_beacon, (const char *g, const char *ev, const char *name, const char *killer, int depth, int score, int turns, int lvl), {
+	try {
+		var p = [['g', UTF8ToString(g)], ['ev', UTF8ToString(ev)], ['name', name ? UTF8ToString(name) : ''],
+		         ['killer', killer ? UTF8ToString(killer) : ''], ['depth', depth], ['score', score], ['turns', turns], ['lvl', lvl]];
+		var q = p.filter(function (a) { return a[1] !== '' && !(a[1] < 0); })
+		         .map(function (a) { return a[0] + '=' + encodeURIComponent(a[1]); }).join('&');
+		fetch('/roguelikes/beacon?' + q, { keepalive: true, mode: 'no-cors' }).catch(function () {});
+	} catch (e) {}
+});
+
+/* Called from enter_score() once the run is over (death, win, retire) */
+void web_run_end(const struct player *p, long score)
+{
+	const char *k = p->died_from, *ev = "death";
+
+	if (p->total_winner) ev = "win", k = NULL;
+	else if (streq(k, "Retiring") || streq(k, "Interrupting")) ev = "quit", k = NULL;
+	else if (prefix(k, "a ")) k += 2;
+	else if (prefix(k, "an ")) k += 3;
+	else if (prefix(k, "the ")) k += 4;
+	js_beacon("tactical-angband", ev, p->full_name, k, p->depth, (int)score,
+		(int)(p->total_energy / 100), p->lev);
+}
 /* ---- JavaScript side (implemented in web/tactical.js) ---- */
 
 EM_JS(void, js_text, (int t, int x, int y, int n, int a, const wchar_t *s), {

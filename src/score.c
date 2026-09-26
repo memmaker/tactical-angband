@@ -247,6 +247,10 @@ void enter_score(const struct player *p, const time_t *death_time)
 {
 	int j;
 
+#ifdef USE_WEB
+	{ void web_run_end(const struct player *p, long score); web_run_end(p, total_points(p)); }
+#endif
+
 	/* Cheaters are not scored */
 	for (j = 0; j < OPT_MAX; ++j) {
 		if (option_type(j) != OP_SCORE)
