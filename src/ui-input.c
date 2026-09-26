@@ -1167,8 +1167,8 @@ bool get_character_name(char *buf, size_t buflen)
 	/* Display prompt */
 	prt("Enter a name for your character (* for a random name): ", 0, 0);
 
-	/* Save the player name */
-	my_strcpy(buf, player->full_name, buflen);
+	/* Save the player name (a new character starts empty) */
+	my_strcpy(buf, character_generated ? player->full_name : "", buflen);
 
 	/* Ask the user for a string */
 	res = askfor_aux_ext(buf, buflen, get_name_keypress, handle_name_mouse);

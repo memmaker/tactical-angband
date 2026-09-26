@@ -1375,6 +1375,14 @@ static enum birth_stage point_based_command(void)
  * Asking for the player's chosen name.
  * ------------------------------------------------------------------------ */
 //phantom changes for server
+/* Ask for a name until one is given; false on escape */
+static bool get_nonempty_name(char *name, size_t len)
+{
+	while (get_character_name(name, len))
+		if (name[0]) return true;
+	return false;
+}
+
 static enum birth_stage get_name_command(void)
 {
 	enum birth_stage next;
@@ -1393,7 +1401,7 @@ static enum birth_stage get_name_command(void)
 	 */
 	if (arg_force_name) {
 		next = BIRTH_HISTORY_CHOICE;
-	} else if (get_character_name(name, sizeof(name))
+	} else if (get_nonempty_name(name, sizeof(name))
 			&& (savefile[0]
 			|| !savefile_name_already_used(name, true, true)
 			|| get_check("A savefile for that name exists.  Overwrite it? "))) {
