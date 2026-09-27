@@ -198,6 +198,8 @@
 		if (!i) {
 			ch = L.tile; cw = L.tile / 2;
 			font = Math.floor(Math.min(ch * 0.8, cw / 0.62));
+			/* text mode: cells from the map font, so wide fonts do not overlap */
+			if (!tilesReady || L.tiles === false) { cw = Math.ceil(measure(font, 0)); ch = Math.round(font * 1.3); }
 			cols = clamp(Math.floor(box.w / cw), 80, 255);
 			rows = clamp(Math.floor(box.h / ch), 24, 255);
 		} else {
@@ -714,6 +716,7 @@
 		if (L.tiles) delete L.tiles;
 		saveLayout();
 		renderTiles();
+		if (terms.length) scheduleLayout();   /* text mode sizes map cells from the font */
 		if (app.running && Module._web_set_tiles) Module._web_set_tiles(L.tiles !== false ? 1 : 0);
 	}
 	function renderTiles() {
