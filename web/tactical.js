@@ -120,6 +120,7 @@
 				});
 				if (s.audio) d.audio = { sound: s.audio.sound === true, music: s.audio.music === true };
 				if (s.wm) d.wm = s.wm;
+				if (s.tiles === false) d.tiles = false;
 				if (s.titles) Object.keys(s.titles).forEach(function (k) {
 					if (typeof s.titles[k] === 'string' && d.font[k]) d.titles[k] = s.titles[k].slice(0, 60);
 				});
@@ -301,7 +302,7 @@
 	}
 
 	function resetLayout() {
-		L = Object.assign(defaultLayout(), { audio: L.audio, wm: wm.state() });
+		L = Object.assign(defaultLayout(), { audio: L.audio, wm: wm.state(), tiles: L.tiles });
 		scheduleLayout();
 		saveLayout();
 	}
@@ -421,6 +422,8 @@
 
 		mouseX: 0, mouseY: 0, mouseB: 0, mods: 0,
 
+		/* The map's tile choice, asked once by init_web() */
+		tilesWanted: function () { return tilesReady && L.tiles !== false ? 1 : 0; },
 		tileset: function (cw, ch, odr, odm) {
 			TILE = cw; TILE_H = ch; OD_ROW = odr; OD_MAX = odm;
 		},
@@ -774,6 +777,7 @@
 			status('');
 			$('game').hidden = false;
 			buildTerms();
+			renderTiles();
 		},
 		print: function (s) { console.log(s); },
 		printErr: function (s) { console.warn(s); },
@@ -789,10 +793,26 @@
 	/* Tile sheet; main() waits for it */
 	var tilesDone = false, tilesWait = false;
 	function tilesFinished(ok) {
+		if (tilesDone) return;   /* a late sheet can't turn tiles back on */
 		tilesReady = ok;
 		tilesDone = true;
 		if (!ok) status('Could not load the tile set; using text.', true);
 		if (tilesWait) Module.removeRunDependency('tiles');
+	}
+	/* Tiles button: Shockbolt <-> None (text).  The game switches its
+	 * graphics mode (web_set_tiles) at the next command prompt and
+	 * redraws; the page only draws what it is sent. */
+	function toggleTiles() {
+		if (!L || !tilesReady) return;
+		L.tiles = L.tiles === false;
+		if (L.tiles) delete L.tiles;
+		saveLayout();
+		renderTiles();
+		if (running && Module._web_set_tiles) Module._web_set_tiles(L.tiles !== false ? 1 : 0);
+	}
+	function renderTiles() {
+		var on = tilesReady && (!L || L.tiles !== false);
+		$('btn-tiles').textContent = 'Tiles: ' + (on ? 'Shockbolt' : 'None');
 	}
 	tiles.onload = function () { tilesFinished(true); };
 	tiles.onerror = function () { tilesFinished(false); };
@@ -808,6 +828,7 @@
 		$('import-file').onchange = function () { if (this.files[0]) importSave(this.files[0]); this.value = ''; };
 		$('btn-new').onclick = newGame;
 		$('btn-help').onclick = toggleHelp;
+		$('btn-tiles').onclick = toggleTiles;
 		$('help-close').onclick = toggleHelp;
 		RvipWM.dropdown($('btn-file'), $('file-menu'));
 		RvipWM.dropdown($('btn-audio'), $('audio-menu'));

@@ -96,6 +96,11 @@ EM_JS(void, js_tileset, (int cw, int ch, int odr, int odm), {
 	Module.ta.tileset(cw, ch, odr, odm);
 });
 
+/* The page's tile choice (Tiles button): 1 Shockbolt, 0 none (text) */
+EM_JS(int, js_tiles_wanted, (void), {
+	return Module.ta.tilesWanted();
+});
+
 EM_JS(void, js_sound, (const char *name), {
 	Module.ta.sound(UTF8ToString(name));
 });
@@ -162,6 +167,35 @@ void web_sync_files(void)
 	js_sync();
 }
 
+
+/* Tiles button: the new choice, applied at the next command prompt */
+static int web_want_tiles = -1;
+
+EMSCRIPTEN_KEEPALIVE void web_set_tiles(int on)
+{
+	web_want_tiles = on ? 1 : 0;
+}
+
+/*
+ * Switch the map between Shockbolt tiles and text.  The game decides what
+ * each grid shows (graf-*.prf or font prefs via reset_visuals); the page
+ * only draws what it is sent.
+ */
+static void web_use_tiles(bool on)
+{
+	graphics_mode *gm = get_graphics_mode(on ? WEB_TILESET : GRAPHICS_NONE);
+
+	if (!gm) return;
+	current_graphics_mode = gm;
+	use_graphics = gm->grafID;
+	tile_width = (use_graphics == GRAPHICS_NONE) ? 1 : 2;
+	tile_height = 1;
+	if (use_graphics != GRAPHICS_NONE)
+		js_tileset(gm->cell_width, gm->cell_height,
+			gm->overdrawRow, gm->overdrawMax);
+	web_term[0].dblh_hook = (use_graphics != GRAPHICS_NONE
+		&& gm->overdrawRow) ? is_dh_tile : NULL;
+}
 
 /* Called from JS when the page is hidden, and every two minutes */
 EMSCRIPTEN_KEEPALIVE void web_request_save(void)
@@ -260,6 +294,22 @@ static int web_pump(void)
 		got = 1;
 	}
 
+	/* Tiles on/off: only at the command prompt, then redraw everything */
+	if (web_want_tiles >= 0 && inkey_flag && character_generated && !got) {
+		bool on = web_want_tiles == 1;
+
+		web_want_tiles = -1;
+		if (on != (use_graphics != GRAPHICS_NONE)) {
+			ui_event evt = EVENT_EMPTY;
+
+			web_use_tiles(on);
+			if (character_dungeon) reset_visuals(true);
+			evt.type = EVT_RESIZE;
+			Term_event_push(&evt);
+			got = 1;
+		}
+	}
+
 	/* Safe autosave: only while waiting for a command */
 	if (web_want_save && inkey_flag && character_generated
 			&& !player->is_dead && !got
@@ -351,14 +401,26 @@ static errr Term_xtra_web(int n, int v)
 	return 1;
 }
 
+static bool web_curs_on_hero(int x, int y);
+
 static errr Term_curs_web(int x, int y)
 {
+	if (web_curs_on_hero(x, y)) return 0;
 	js_curs(web_idx(), x, y, 1, 1);
 	return 0;
 }
 
+/* No cursor on the hero: the map cell under the player is left alone */
+static bool web_curs_on_hero(int x, int y)
+{
+	if (web_idx() || !character_dungeon || !player) return false;
+	return x == COL_MAP + (player->grid.x - Term->offset_x) * tile_width
+		&& y == ROW_MAP + (player->grid.y - Term->offset_y) * tile_height;
+}
+
 static errr Term_bigcurs_web(int x, int y)
 {
+	if (web_curs_on_hero(x, y)) return 0;
 	js_curs(web_idx(), x, y, tile_width, tile_height);
 	return 0;
 }
@@ -404,19 +466,8 @@ errr init_web(int argc, char **argv)
 	(void) argc;
 	(void) argv;
 
-	/* Shockbolt tiles, one tile = 2 x 1 text cells of the map term */
-	if (init_graphics_modes()) {
-		graphics_mode *gm = get_graphics_mode(WEB_TILESET);
-
-		if (gm) {
-			current_graphics_mode = gm;
-			use_graphics = gm->grafID;
-			tile_width = 2;
-			tile_height = 1;
-			js_tileset(gm->cell_width, gm->cell_height,
-				gm->overdrawRow, gm->overdrawMax);
-		}
-	}
+	/* Shockbolt tiles (one tile = 2 x 1 text cells of the map) or text */
+	if (init_graphics_modes()) web_use_tiles(js_tiles_wanted() != 0);
 
 	event_add_handler(EVENT_SOUND, web_sound, NULL);
 
@@ -443,7 +494,7 @@ errr init_web(int argc, char **argv)
 		t->text_hook = Term_text_web;
 		t->pict_hook = Term_pict_web;
 		t->higher_pict = true;
-		if (!i && current_graphics_mode
+		if (!i && use_graphics != GRAPHICS_NONE
 				&& current_graphics_mode->overdrawRow)
 			t->dblh_hook = is_dh_tile;
 
