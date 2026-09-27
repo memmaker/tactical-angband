@@ -59,7 +59,7 @@ void do_cmd_go_up(struct command *cmd)
 
 	/* Verify stairs */
 	if (!square_isupstairs(cave, player->grid)) {
-		/* Walk to the nearest known up staircase, then take it */
+		/* Walk to the nearest known up staircase (press < again to take it) */
 		do_cmd_navigate_up(cmd);
 		if (player->upkeep->running) player->upkeep->path_stairs = 1;
 		return;
@@ -102,7 +102,7 @@ void do_cmd_go_down(struct command *cmd)
 
 	/* Verify stairs */
 	if (!square_isdownstairs(cave, player->grid)) {
-		/* Walk to the nearest known down staircase, then take it */
+		/* Walk to the nearest known down staircase (press > again to take it) */
 		do_cmd_navigate_down(cmd);
 		if (player->upkeep->running) player->upkeep->path_stairs = -1;
 		return;

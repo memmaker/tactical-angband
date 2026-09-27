@@ -1929,11 +1929,9 @@ static void path_arrived(int what)
 	if (what == 2) {
 		if (messages_added == player->upkeep->explore_msgs)
 			cmdq_push(CMD_EXPLORE);
-	} else if (what > 0 && square_isupstairs(cave, player->grid)) {
-		cmdq_push(CMD_GO_UP);
-	} else if (what < 0 && square_isdownstairs(cave, player->grid)) {
-		cmdq_push(CMD_GO_DOWN);
 	}
+	/* '<' / '>' only walk to the stairs; the player presses the key again
+	 * to take them (RVIP finetuning) */
 }
 
 void run_step(int dir)
