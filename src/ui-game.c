@@ -652,6 +652,15 @@ void check_for_player_interrupt(game_event_type type, game_event_data *data,
 	    (player_is_resting(player) && !(turn & 0x7F))) {
 		ui_event e;
 
+#ifdef USE_WEB
+		/* Auto-explore: paint every step, then wait 40 ms (RVIP finetuning) */
+		if (player->upkeep->running && player->upkeep->path_stairs == 2) {
+			handle_stuff(player);
+			Term_fresh();
+			Term_xtra(TERM_XTRA_DELAY, 40);
+		}
+#endif
+
 		/* Do not wait */
 		inkey_scan = SCAN_INSTANT;
 
