@@ -101,7 +101,7 @@ sound:HIT_HI_GREAT:plc_hit_grunt2
 sound:HIT_HI_SUPERB:plc_hit_anvil2
 
 # You miss a melee attack against a monster.
-sound:MISS:plc_miss_arrow2
+sound:MISS:plc_miss_swish
 
 # You fire a missile.
 sound:SHOOT:plc_miss_arrow
