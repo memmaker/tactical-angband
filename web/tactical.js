@@ -171,14 +171,14 @@
 			wins: [{ id: 'main', title: 'Map' }, { id: 'msg', title: 'Messages' }, { id: 'inv', title: 'Inventory' }, { id: 'mon', title: 'Visible monsters' }, { id: 'itm', title: 'Visible items' }, { id: 'rec', title: 'Recall' }, { id: 'eqp', title: 'Equipment' }],
 			multi: { d: 'v', r: s.bottom, a: { d: 'h', r: s.side, a: 'main', b: { d: 'v', r: s.inv, a: 'inv', b: { d: 'v', r: (s.mon - s.inv) / (1 - s.inv), a: 'mon', b: 'itm' } } }, b: 'msg' },
 			single: 'main',
-			state: L.wm, noFont: 'main',
+			state: L.wm,
 			save: function (st) { L.wm = st; saveLayout(); },
 			layout: function (r) {
 				rects = r;
 				TERMS.forEach(function (d, i) { if (terms[i]) fitCanvas(i); });
 				scheduleSoon();
 			},
-			font: function (id, d) { zoomSub(id, d); },
+			font: function (id, d) { if (id === 'main') zoomMain(d); else zoomSub(id, d); },
 			onReset: resetLayout
 		});
 		wm.apply();
@@ -398,8 +398,8 @@
 	}
 
 	function renderAudio() {
-		$('btn-sound').textContent = 'Sound: ' + (audio.sound ? 'on' : 'off');
-		$('btn-music').textContent = 'Music: ' + (audio.music ? 'on' : 'off');
+		$('chk-sound').checked = !!audio.sound;
+		$('chk-music').checked = !!audio.music;
 	}
 
 	var ta = {
@@ -809,10 +809,10 @@
 		$('btn-new').onclick = newGame;
 		$('btn-help').onclick = toggleHelp;
 		$('help-close').onclick = toggleHelp;
-		$('btn-zoom-in').onclick = function () { zoomMain(1); };
-		$('btn-zoom-out').onclick = function () { zoomMain(-1); };
-		$('btn-sound').onclick = function () { toggleAudio('sound'); };
-		$('btn-music').onclick = function () { toggleAudio('music'); };
+		RvipWM.dropdown($('btn-file'), $('file-menu'));
+		RvipWM.dropdown($('btn-audio'), $('audio-menu'));
+		$('chk-sound').onchange = function () { toggleAudio('sound'); };
+		$('chk-music').onchange = function () { toggleAudio('music'); };
 		renderAudio();
 
 		/* Buttons never take the keyboard focus away from the game */
