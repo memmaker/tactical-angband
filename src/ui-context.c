@@ -1233,6 +1233,7 @@ static bool cmd_menu(struct command_list *list, void *selection_p)
 
 	int i, mode = OPT(player, rogue_like_commands) ?
 		KEYMAP_MODE_ROGUE : KEYMAP_MODE_ORIG;
+	int shown[64], nshown;
 
 	/* Size the box to its content (RVIP 3b): longest entry x entries */
 	area.width = 1;
@@ -1251,11 +1252,21 @@ static bool cmd_menu(struct command_list *list, void *selection_p)
 	/* Set up the menu */
 	menu_init(&menu, MN_SKIN_SCROLL, &commands_menu);
 	menu_setpriv(&menu, list->len, list->list);
+	/* No movement in the Enter menu: walking and running are keys on the
+	 * map (RVIP finetuning) */
+	nshown = 0;
+	for (i = 0; i < (int) list->len && i < 64; i++) {
+		cmd_code c = list->list[i].cmd;
+
+		if (c == CMD_WALK || c == CMD_RUN || c == CMD_JUMP) continue;
+		shown[nshown++] = i;
+	}
+	if (nshown < (int) list->len) menu_set_filter(&menu, shown, nshown);
 	area.col += 2 * list->menu_level;
 	area.row -= list->menu_level;
 	assert(area.row > 1);
 	area.col = MAX(2, MIN(area.col, Term->wid - area.width - 2));
-	area.page_rows = MIN((int) list->len, Term->hgt - area.row - 2);
+	area.page_rows = MIN(nshown, Term->hgt - area.row - 2);
 	menu_layout(&menu, &area);
 
 	/* Set up the screen */
@@ -1268,10 +1279,13 @@ static bool cmd_menu(struct command_list *list, void *selection_p)
 		evt = menu_select(&menu, 0, true);
 
 		if (evt.type == EVT_SELECT) {
-			if (list->list[menu.cursor].cmd ||
-					list->list[menu.cursor].hook) {
+			int oid = menu.filter_list ?
+				menu.filter_list[menu.cursor] : menu.cursor;
+
+			if (list->list[oid].cmd ||
+					list->list[oid].hook) {
 				/* It's a proper command. */
-				*selection = &list->list[menu.cursor];
+				*selection = &list->list[oid];
 				break;
 			} else {
 				/*
@@ -1282,13 +1296,13 @@ static bool cmd_menu(struct command_list *list, void *selection_p)
 				 * Look up the list of commands for the nested
 				 * menu.
 				 */
-				if (list->list[menu.cursor].nested_cached_idx == -1) {
-					list->list[menu.cursor].nested_cached_idx =
-						cmd_list_lookup_by_name(list->list[menu.cursor].nested_name);
+				if (list->list[oid].nested_cached_idx == -1) {
+					list->list[oid].nested_cached_idx =
+						cmd_list_lookup_by_name(list->list[oid].nested_name);
 				}
-				if (list->list[menu.cursor].nested_cached_idx >= 0) {
+				if (list->list[oid].nested_cached_idx >= 0) {
 					/* Display a menu for it. */
-					if (!cmd_menu(&cmds_all[list->list[menu.cursor].nested_cached_idx], selection_p)) {
+					if (!cmd_menu(&cmds_all[list->list[oid].nested_cached_idx], selection_p)) {
 						break;
 					}
 				} else {
