@@ -36,7 +36,7 @@ SAVING = '''<ul>
 WEB = '''<ul>
 <li><strong>Windows:</strong> the tiled map (Shockbolt tiles); Inventory, Visible monsters and Visible items on the right; Messages and Recall along the bottom. Menus, stores and help pop up over the map.</li>
 <li><strong>Resize windows</strong> by dragging the gaps between them. <em>Reset windows</em> puts everything back.</li>
-<li><strong>Zoom:</strong> <em>Zoom −</em> / <em>Zoom +</em> change the size of the map tiles. Hover over a text window's title to show its <em>A−</em> / <em>A+</em> buttons; click a title to rename the window.</li>
+<li><strong>Zoom:</strong> <em>A−</em> / <em>A+</em> on the Map title bar (shown on hover) change the size of the map tiles. Hover over a text window's title to show its <em>A−</em> / <em>A+</em> buttons; click a title to rename the window.</li>
 <li><strong>Sound</strong> and <strong>Music</strong> are off until you switch them on in the top bar. The sound effects are the game's own sound events, played with the Dubtrain Angband Sound Pack; music plays in town.</li>
 <li><strong>Keys:</strong> the arrow keys or the numeric keypad move you; Shift+arrow runs. <em>Center map</em> and <em>auto_more</em> are on by default here (change them under <kbd>=</kbd>).</li>
 <li><strong>Mouse:</strong> click a square to walk there, click yourself or a monster for a menu.</li>
