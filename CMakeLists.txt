@@ -125,7 +125,7 @@ if(SUPPORT_WINDOWS_FRONTEND)
         set(SUPPORT_SDL2_SOUND OFF)
     endif()
     # Set up the path for the source of the resource file.
-    string(CONCAT OUR_WINDOWS_RC src/win/ ${OUR_EXECUTABLE_NAME} .rc)
+    set(OUR_WINDOWS_RC src/win/tactical-angband.rc)
     # Enable compilation of resource files.
     enable_language(RC)
 endif()

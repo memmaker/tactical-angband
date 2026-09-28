@@ -1,0 +1,70 @@
+# Release builds for Linux and macOS (terminal, curses frontend) and
+# Windows (native Windows frontend, cross-compiled with MinGW).
+# Runs only on a version tag (git tag v1.0 && git push origin v1.0) or by hand.
+name: release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+env:
+  GAME: tactical-angband
+  EXE: angband
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            runs-on: ubuntu-latest
+            deps: sudo apt-get update && sudo apt-get install -y libncurses-dev ninja-build
+            cmake: -DSUPPORT_GCU_FRONTEND=ON
+          - os: windows
+            runs-on: ubuntu-latest
+            deps: sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-i686 ninja-build
+            cmake: -DSUPPORT_WINDOWS_FRONTEND=ON -DSUPPORT_BUNDLED_PNG=ON -DCMAKE_TOOLCHAIN_FILE=../toolchains/linux-i686-mingw32-cross.cmake
+          - os: macos
+            runs-on: macos-latest
+            deps: brew install ninja
+            cmake: -DSUPPORT_GCU_FRONTEND=ON -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: ${{ matrix.deps }}
+      - name: build
+        run: |
+          mkdir build && cd build
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DSC_INSTALL=ON ${{ matrix.cmake }} ..
+          ninja
+      - name: package
+        shell: bash
+        run: |
+          d=$GAME-${{ matrix.os }}
+          cp -r build/game $d
+          rm -rf $d/run-tests $d/tests
+          cp README.md $d/ 2>/dev/null || true
+          if [ ${{ matrix.os }} != windows ]; then
+            printf '#!/bin/sh\n# Terminal version: run in a terminal window of at least 80x24.\ncd "$(dirname "$0")" && LANG=${LANG:-en_US.UTF-8} exec ./%s -mgcu "$@"\n' $EXE > $d/play.sh
+            chmod +x $d/play.sh
+          fi
+          if [ ${{ matrix.os }} = windows ]; then zip -qr $d.zip $d; else tar czf $d.tar.gz $d; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.GAME }}-${{ matrix.os }}
+          path: ${{ env.GAME }}-${{ matrix.os }}.*
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.GAME }}-*
