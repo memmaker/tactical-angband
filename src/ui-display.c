@@ -1889,7 +1889,7 @@ static void update_messages_subwindow(game_event_type type,
 	term *old = Term;
 	term *inv_term = user;
 
-	int i;
+	int i, n;
 	int w, h;
 	int x, y;
 	bool is_fresh = true;
@@ -1903,9 +1903,12 @@ static void update_messages_subwindow(game_event_type type,
 	/* Get size */
 	Term_get_size(&w, &h);
 
-	/* Dump messages */
+	/* Dump messages: the newest n fill the window from the top (web: no
+	   empty band above the first message), older ones scroll off */
 	const char* last_msg = NULL;
+	n = MIN(messages_num(), h);
 	for (i = 0; i < h; i++) {
+		if (i >= n) { Term_erase(0, i, 255); continue; }
 		uint16_t count = message_count(i);
 		const char *str = message_str(i);
 		if (is_fresh && prev_last_msg == str) {
@@ -1921,7 +1924,7 @@ static void update_messages_subwindow(game_event_type type,
 			msg = format("%s <%dx>", str, count);
 		}
 
-		Term_putstr(0, (h - 1) - i, -1, color, msg);
+		Term_putstr(0, (n - 1) - i, -1, color, msg);
 
 
 		/* Cursor */
