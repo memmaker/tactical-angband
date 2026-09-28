@@ -20,7 +20,7 @@ emcc -O2 -std=gnu99 -DUSE_WEB -DHAVE_MKSTEMP -Isrc -w \
 	-o "$OUT/tactical-core.js" \
 	-sASYNCIFY -sASYNCIFY_STACK_SIZE=131072 -sSTACK_SIZE=2097152 \
 	-sALLOW_MEMORY_GROWTH -sINITIAL_MEMORY=128MB \
-	-sEXPORTED_FUNCTIONS=_main,_web_request_save,_web_set_tiles \
+	-sEXPORTED_FUNCTIONS=_main,_web_request_save,_web_set_tiles,_web_set_tile_mult \
 	-sEXPORTED_RUNTIME_METHODS=FS,IDBFS,HEAP32,addRunDependency,removeRunDependency \
 	-sFORCE_FILESYSTEM -lidbfs.js -sENVIRONMENT=web \
 	--preload-file web/stage/lib@/tactical-angband/lib

@@ -7,7 +7,8 @@
 	'use strict';
 
 	var TILE = 64, TILE_H = 64;    /* source tile size (set by the game) */
-	var OD_ROW = 0, OD_MAX = 0;    /* rows of double-height tiles */
+	var OD_ROW = 0, OD_MAX = 0;
+	var MULT = 1;                  /* grid = 2*MULT x MULT map cells (tile mode zoom) */    /* rows of double-height tiles */
 	var ROOT = '/tactical-angband';
 	/* Savefile, pref files, scores, panic saves (4.2 main.c: lib/<dir>) */
 	var PERSIST = [ROOT + '/lib/save', ROOT + '/lib/user', ROOT + '/lib/scores', ROOT + '/lib/panic'];
@@ -113,6 +114,7 @@
 					if (typeof s.split[k] === 'number' && s.split[k] > 0 && s.split[k] < 1) d.split[k] = s.split[k];
 				});
 				if (TILE_STEPS.indexOf(s.tile) >= 0) d.tile = s.tile;
+				if (s.mult >= 1 && s.mult <= 4) d.mult = s.mult;
 				d.autoSplit = s.autoSplit === true;
 				d.autoTile = s.autoTile === true;
 				if (d.autoSplit || d.autoTile) followWindow(d);
@@ -196,7 +198,7 @@
 	function termShape(i) {
 		var box = inner(i), cw, ch, font, cols, rows;
 		if (!i) {
-			ch = L.tile; cw = L.tile / 2;
+			ch = tilesOn() ? Math.min(L.tile, defaultLayout().tile) : L.tile; cw = ch / 2;
 			font = Math.floor(Math.min(ch * 0.8, cw / 0.62));
 			/* text mode: cells from the map font, so wide fonts do not overlap */
 			if (!tilesReady || L.tiles === false) { cw = Math.ceil(measure(font, 0)); ch = Math.round(font * 1.3); }
@@ -281,7 +283,19 @@
 	}
 
 	/* Zoom: main window tile size, sub window font size */
+	function tilesOn() { return tilesReady && !!L && L.tiles !== false; }
 	function zoomMain(dir) {
+		if (tilesOn()) {   /* tile mode: bigger grids, same 80x24 text cells */
+			var m = clamp((L.mult || 1) + dir, 1, 4);
+			if (m === (L.mult || 1)) return;
+			L.mult = m;
+			if (Module._web_set_tile_mult) Module._web_set_tile_mult(m);
+			saveLayout();
+			app.status('Map tiles: ' + (m * terms[0].ch) + ' px');
+			clearTimeout(zoomMsgTimer);
+			zoomMsgTimer = setTimeout(function () { app.status(''); }, 1200);
+			return;
+		}
 		var i = TILE_STEPS.indexOf(L.tile);
 		var n = clamp(i + dir, 0, TILE_STEPS.length - 1);
 		if (n === i) return;
@@ -296,7 +310,8 @@
 	var zoomMsgTimer = 0;
 
 	function resetLayout() {
-		L = Object.assign(defaultLayout(), { audio: L.audio, wm: wm.state(), tiles: L.tiles, face: L.face, mapFace: L.mapFace });
+		L = Object.assign(defaultLayout(), { audio: L.audio, wm: wm.state(), tiles: L.tiles, face: L.face, mapFace: L.mapFace, mult: 1 });
+		if (Module._web_set_tile_mult) Module._web_set_tile_mult(1);
 		scheduleLayout();
 		saveLayout();
 	}
@@ -418,8 +433,9 @@
 
 		/* The map's tile choice, asked once by init_web() */
 		tilesWanted: function () { return tilesReady && L.tiles !== false ? 1 : 0; },
-		tileset: function (cw, ch, odr, odm) {
-			TILE = cw; TILE_H = ch; OD_ROW = odr; OD_MAX = odm;
+		tileMult: function () { return L.mult || 1; },
+		tileset: function (cw, ch, odr, odm, m) {
+			TILE = cw; TILE_H = ch; OD_ROW = odr; OD_MAX = odm; MULT = m || 1;
 		},
 
 		termCols: function (t) { return terms[t].cols; },
@@ -467,7 +483,7 @@
 
 		pict: function (t, x, y, n, ap, cp, tap, tcp) {
 			var T = terms[t], c = T.ctx, H = Module.HEAP32;
-			var w = T.cw * 2, h = T.ch;
+			var w = T.cw * 2 * MULT, h = T.ch * MULT;   /* a grid: 2m x m cells */
 			var sw = tiles.naturalWidth, sh = tiles.naturalHeight;
 			ap >>= 2; cp >>= 2; tap >>= 2; tcp >>= 2;
 			for (var i = 0; i < n; i++) {

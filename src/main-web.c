@@ -92,11 +92,15 @@ EM_JS(void, js_pict, (int t, int x, int y, int n, const int *ap,
 	Module.ta.pict(t, x, y, n, ap, cp, tap, tcp);
 });
 
-EM_JS(void, js_tileset, (int cw, int ch, int odr, int odm), {
-	Module.ta.tileset(cw, ch, odr, odm);
+EM_JS(void, js_tileset, (int cw, int ch, int odr, int odm, int m), {
+	Module.ta.tileset(cw, ch, odr, odm, m);
 });
 
 /* The page's tile choice (Tiles button): 1 Shockbolt, 0 none (text) */
+EM_JS(int, js_tile_mult, (void), {
+	return Module.ta.tileMult();
+});
+
 EM_JS(int, js_tiles_wanted, (void), {
 	return Module.ta.tilesWanted();
 });
@@ -176,6 +180,14 @@ EMSCRIPTEN_KEEPALIVE void web_set_tiles(int on)
 	web_want_tiles = on ? 1 : 0;
 }
 
+/* Map zoom (A-/A+) in tile mode: one grid = 2m x m text cells */
+static int web_mult = 1, web_want_mult = 0;
+
+EMSCRIPTEN_KEEPALIVE void web_set_tile_mult(int m)
+{
+	web_want_mult = m < 1 ? 1 : m > 4 ? 4 : m;
+}
+
 /*
  * Switch the map between Shockbolt tiles and text.  The game decides what
  * each grid shows (graf-*.prf or font prefs via reset_visuals); the page
@@ -188,11 +200,11 @@ static void web_use_tiles(bool on)
 	if (!gm) return;
 	current_graphics_mode = gm;
 	use_graphics = gm->grafID;
-	tile_width = (use_graphics == GRAPHICS_NONE) ? 1 : 2;
-	tile_height = 1;
+	tile_width = (use_graphics == GRAPHICS_NONE) ? 1 : 2 * web_mult;
+	tile_height = (use_graphics == GRAPHICS_NONE) ? 1 : web_mult;
 	if (use_graphics != GRAPHICS_NONE)
 		js_tileset(gm->cell_width, gm->cell_height,
-			gm->overdrawRow, gm->overdrawMax);
+			gm->overdrawRow, gm->overdrawMax, web_mult);
 	web_term[0].dblh_hook = (use_graphics != GRAPHICS_NONE
 		&& gm->overdrawRow) ? is_dh_tile : NULL;
 }
@@ -295,11 +307,14 @@ static int web_pump(void)
 	}
 
 	/* Tiles on/off: only at the command prompt, then redraw everything */
-	if (web_want_tiles >= 0 && inkey_flag && character_generated && !got) {
-		bool on = web_want_tiles == 1;
+	if ((web_want_tiles >= 0 || web_want_mult) && inkey_flag && character_generated && !got) {
+		bool on = web_want_tiles >= 0 ? web_want_tiles == 1 : use_graphics != GRAPHICS_NONE;
+		int m = web_want_mult ? web_want_mult : web_mult;
 
 		web_want_tiles = -1;
-		if (on != (use_graphics != GRAPHICS_NONE)) {
+		web_want_mult = 0;
+		if (on != (use_graphics != GRAPHICS_NONE) || m != web_mult) {
+			web_mult = m;
 			ui_event evt = EVENT_EMPTY;
 
 			web_use_tiles(on);
@@ -467,6 +482,7 @@ errr init_web(int argc, char **argv)
 	(void) argv;
 
 	/* Shockbolt tiles (one tile = 2 x 1 text cells of the map) or text */
+	web_mult = js_tile_mult();
 	if (init_graphics_modes()) web_use_tiles(js_tiles_wanted() != 0);
 
 	event_add_handler(EVENT_SOUND, web_sound, NULL);
